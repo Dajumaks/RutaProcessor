@@ -6,3 +6,10 @@ Thumbs.db
 *.swiftdoc
 *.swiftmodule
 *.swiftsourceinfo
+*.exe
+*.exp
+*.lib
+
+*.exe
+*.exp
+*.lib
