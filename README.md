@@ -1,46 +1,237 @@
-RutaProcessor
-Procesador léxico y sintáctico del lenguaje Ruta, un lenguaje diseñado para programar las rutas de un robot de entregas dentro de un campus universitario. Está implementado en Swift, sin generadores de analizadores ni librerías que reemplacen el lexer y el parser, que se desarrollan manualmente a partir de la gramática.
-Información	Detalle
-Autor	Josue Daniel Castaño Montoya
-Universidad	Universidad Autónoma de Manizales
-Programa	Ingeniería de Sistemas
-Asignatura	Procesadores de Lenguajes
-Trabajo	Taller calificado, II Corte: Ruta, a Language for the Campus Robot
-Docente	Harold Morales
-Periodo	2026-03
-Lenguaje de implementación	SwiftDescripción
-El procesador recibe un archivo con un programa Ruta, lo convierte en una secuencia de tokens mediante el análisis léxico y comprueba si el programa cumple las reglas sintácticas del lenguaje.
+<div align="center">
 
-Cuando encuentra un programa inválido, informa la línea, la columna y el motivo del error.
+# RutaProcessor
 
-Ejemplo de un programa Ruta:
+**Procesador léxico y sintáctico para Ruta, un lenguaje de dominio específico para programar las rutas de un robot de entregas en un campus universitario.**
+
+![Swift](https://img.shields.io/badge/Swift-F05138?logo=swift&logoColor=white)
+![Platform](https://img.shields.io/badge/platform-Windows%20x64-0078D6?logo=windows&logoColor=white)
+![Parser](https://img.shields.io/badge/parser-recursive%20descent-informational)
+![Status](https://img.shields.io/badge/status-academic%20project-lightgrey)
+
+</div>
+
+---
+
+## Tabla de contenido
+
+- [Acerca del proyecto](#acerca-del-proyecto)
+- [Características](#características)
+- [El lenguaje Ruta](#el-lenguaje-ruta)
+- [Primeros pasos](#primeros-pasos)
+- [Uso](#uso)
+- [Arquitectura](#arquitectura)
+- [Especificación formal](#especificación-formal)
+- [Manejo de errores](#manejo-de-errores)
+- [Pruebas](#pruebas)
+- [Estructura del repositorio](#estructura-del-repositorio)
+- [Contexto académico](#contexto-académico)
+- [Autor](#autor)
+
+---
+
+## Acerca del proyecto
+
+**RutaProcessor** recibe un archivo con un programa escrito en Ruta, lo transforma en una secuencia de tokens (análisis léxico) y verifica que cumpla la gramática del lenguaje (análisis sintáctico). Si el programa es inválido, informa la **línea**, la **columna** y la **causa** del error en un mensaje pensado para quien escribió el programa.
+
+El lexer y el parser están escritos **a mano**, sin generadores de analizadores ni librerías que hagan el trabajo léxico o sintáctico, de modo que cada parte de la gramática se refleja directamente en el código.
+
+## Características
+
+- Análisis léxico con seguimiento de línea y columna por token.
+- Parser de **descenso recursivo**: una función por cada no terminal de la gramática.
+- Precedencia aritmética resuelta en la propia gramática (sin ambigüedad).
+- Bloques condicionales delimitados con `end`, sin el problema del *dangling else*.
+- Comentarios de línea (`//`) y números enteros o decimales.
+- Errores léxicos y sintácticos con ubicación exacta y mensaje descriptivo.
+- Sin dependencias externas.
+
+## El lenguaje Ruta
+
+Un programa Ruta empieza con la declaración del robot y admite movimientos, giros, variables, expresiones aritméticas, comparaciones, decisiones, bucles y comentarios.
+
+```text
 robot Tito
-speed = 2
+  speed = 2
 
-repeat 4 {
+  repeat 4 {
     forward 10 * speed + 5
     turn right
-}
+  }
 
-if front_sensor < 30 then
+  if front_sensor < 30 then
     stop
-else
+  else
     forward 1
-end
+  end
 
-// Volver a la base
-return base
-Requisitos
-- Swift
+  // volver a la base
+  return base
+```
 
+| Instrucción | Descripción |
+|---|---|
+| `nombre = expresión` | Asigna el valor de una expresión a una variable. |
+| `forward expresión` | Avanza la cantidad indicada. |
+| `turn left` / `turn right` | Gira a la izquierda o a la derecha. |
+| `stop` | Detiene el robot. |
+| `repeat expresión { ... }` | Repite un bloque de instrucciones. |
+| `if cond then ... [else ...] end` | Ejecuta según una comparación. |
+| `return base` | Regresa a la base. |
 
+## Primeros pasos
 
+### Requisitos
 
-Requisitos
-- Swift instalado y disponible desde la terminal mediante swiftc.
-- Windows x64 para compilar y ejecutar el proyecto en el entorno previsto.
-Instalación oficial: Swift para Windows.
-Estructura del proyecto
+- [Swift para Windows](https://www.swift.org/install/windows/) instalado, con `swiftc` disponible en la terminal.
+- Windows x64.
+
+Verifica la instalación:
+
+```powershell
+swiftc --version
+```
+
+### Compilación
+
+Desde la raíz del repositorio:
+
+```powershell
+swiftc Token.swift Errores.swift Lexer.swift Parser.swift main.swift -o RutaProcessor.exe
+```
+
+## Uso
+
+```powershell
+.\RutaProcessor.exe <archivo.ruta>
+```
+
+Ejemplos:
+
+```powershell
+# Programa válido
+.\RutaProcessor.exe .\examples\correcto.ruta
+
+# Programa con un error sintáctico
+.\RutaProcessor.exe .\examples\incorrecto.ruta
+
+# Expresión con precedencia aritmética
+.\RutaProcessor.exe .\examples\ambiguo.ruta
+```
+
+Si el programa es válido, se imprime la lista de tokens reconocidos y el mensaje `Programa Ruta válido.`. Si no lo es, se imprime el error y el proceso termina con código de salida `1`.
+
+Formato de la lista de tokens (fragmento ilustrativo):
+
+```text
+TOKENS RECONOCIDOS:
+ROBOT: 'robot' [línea 1, columna 1]
+IDENTIFIER: 'Tito' [línea 1, columna 7]
+IDENTIFIER: 'speed' [línea 2, columna 3]
+...
+```
+
+## Arquitectura
+
+El procesamiento sigue un flujo en dos fases:
+
+```text
+archivo .ruta ──▶ Lexer ──▶ [Token] ──▶ Parser ──▶ válido / error con posición
+                 (texto)   (secuencia)  (gramática)
+```
+
+| Componente | Archivo | Responsabilidad |
+|---|---|---|
+| Token | `Token.swift` | Estructura con tipo, lexema, línea y columna. |
+| Errores | `Errores.swift` | Errores léxicos y sintácticos con posición. |
+| Lexer | `Lexer.swift` | Convierte el texto en tokens; descarta espacios y comentarios. |
+| Parser | `Parser.swift` | Verifica la estructura según la gramática (descenso recursivo). |
+| Entrada | `main.swift` | Lee el archivo, ejecuta ambas fases y reporta el resultado. |
+
+**Decisión de diseño:** el lexer trabaja sobre escalares Unicode para tratar de la misma forma los saltos de línea de Windows (`\r\n`) y de Unix (`\n`). En Swift, `"\r\n"` es un único `Character`, por lo que se separan antes de analizar.
+
+## Especificación formal
+
+### Tokens
+
+| Token | Patrón | Ejemplos |
+|---|---|---|
+| Palabras reservadas | `robot` `forward` `turn` `left` `right` `stop` `repeat` `if` `then` `else` `end` `return` `base` | `robot`, `forward` |
+| `IDENTIFIER` | `[A-Za-z_][A-Za-z0-9_]*` | `Tito`, `speed`, `front_sensor` |
+| `NUMBER` | `[0-9]+(\.[0-9]+)?` | `4`, `30`, `2.5` |
+| `ASSIGN` | `=` | `=` |
+| `PLUS` `MINUS` `STAR` `SLASH` | `+` `-` `*` `/` | `10 * speed + 5` |
+| `LT` `GT` `LE` `GE` `EQ` `NE` | `<` `>` `<=` `>=` `==` `!=` | `front_sensor < 30` |
+| `LBRACE` `RBRACE` `LPAREN` `RPAREN` | `{` `}` `(` `)` | `repeat 4 {` |
+| `NEWLINE` | Salto de línea (separa instrucciones) | |
+| `EOF` | Fin de la entrada | |
+
+Se ignoran los espacios, los tabuladores y los comentarios de línea (`// ...`).
+
+### Gramática (EBNF)
+
+```ebnf
+programa    = "robot", IDENTIFIER, NEWLINE, listaInstr, EOF ;
+
+listaInstr  = { NEWLINE }, { instruccion, { NEWLINE } } ;
+
+instruccion = asignacion | avance | giro | "stop"
+            | repetir | condicional | retorno ;
+
+asignacion  = IDENTIFIER, "=", expresion ;
+avance      = "forward", expresion ;
+giro        = "turn", ( "left" | "right" ) ;
+retorno     = "return", "base" ;
+
+repetir     = "repeat", expresion, "{", listaInstr, "}" ;
+
+condicional = "if", condicion, "then", NEWLINE, listaInstr,
+              [ "else", NEWLINE, listaInstr ],
+              "end" ;
+
+condicion   = expresion, ( "<" | ">" | "<=" | ">=" | "==" | "!=" ), expresion ;
+
+expresion   = termino, { ( "+" | "-" ), termino } ;
+termino     = factor,  { ( "*" | "/" ), factor } ;
+factor      = NUMBER | IDENTIFIER | "(", expresion, ")" ;
+```
+
+### Eliminación de ambigüedades
+
+| Problema | Solución en la gramática |
+|---|---|
+| `forward 10 * speed + 5` podría leerse de dos formas. | Tres niveles (`expresion` → `termino` → `factor`) fijan la precedencia: se interpreta como `(10 * speed) + 5`. |
+| *Dangling else* en condicionales anidados. | Todo `if` se cierra con `end`, por lo que cada `else` pertenece sin dudas al `if` que lo contiene. |
+
+## Manejo de errores
+
+Los errores se reportan con la posición y la causa:
+
+```text
+Error léxico en línea L, columna C: <mensaje>
+Error sintáctico en línea L, columna C: <mensaje>
+```
+
+Ejemplo con `examples/incorrecto.ruta`, donde la expresión `forward 10 *` queda sin segundo operando:
+
+```text
+Error sintáctico en línea 3, columna N: Se esperaba un número, un identificador
+o una expresión entre paréntesis. Se encontró '\n'.
+```
+
+La columna apunta al punto donde el analizador esperaba el operando faltante.
+
+## Pruebas
+
+| Archivo | Propósito | Resultado esperado |
+|---|---|---|
+| `examples/correcto.ruta` | Asignaciones, `repeat`, `if/else/end`, comentario y `return base`. | Programa aceptado. |
+| `examples/incorrecto.ruta` | Expresión incompleta (`forward 10 *`). | Error sintáctico en la línea 3. |
+| `examples/ambiguo.ruta` | Expresión `10 * speed + 5` con precedencia. | Programa aceptado con una única interpretación. |
+
+## Estructura del repositorio
+
+```text
 RutaProcessor/
 ├── Token.swift
 ├── Errores.swift
@@ -51,128 +242,16 @@ RutaProcessor/
 │   ├── correcto.ruta
 │   ├── incorrecto.ruta
 │   └── ambiguo.ruta
-├── docs/
-│   └── trabajo-teorico.md
 ├── README.md
 └── .gitignore
+```
 
+## Contexto académico
 
-- Token.swift: representación de los tokens, incluyendo tipo, lexema, línea y columna.
-- Errores.swift: definición de errores léxicos y sintácticos.
-- Lexer.swift: análisis léxico.
-- Parser.swift: análisis sintáctico mediante descenso recursivo.
-- main.swift: punto de entrada del programa.
-- examples/: programas utilizados para las pruebas.
-- docs/trabajo-teorico.md: documentación de la gramática y sus ambigüedades.
-Compilación
-Abre PowerShell en la carpeta raíz del proyecto y ejecuta:
-swiftc Token.swift Errores.swift Lexer.swift Parser.swift main.swift -o RutaProcessor.exe
+Proyecto desarrollado como **taller calificado del II Corte** de la asignatura *Procesadores de Lenguajes* (Ingeniería de Sistemas, Universidad Autónoma de Manizales, periodo 2026-03), bajo la dirección del docente Harold Morales. El enunciado, *Ruta, a Language for the Campus Robot*, plantea definir el lenguaje con gramáticas formales y construir su procesador en el lenguaje asignado, en este caso **Swift**.
 
+## Autor
 
-Ejecución
-Para ejecutar el programa válido:
-.\RutaProcessor.exe .\examples\correcto.ruta
-
-
-Para probar el programa incorrecto:
-.\RutaProcessor.exe .\examples\incorrecto.ruta
-
-
-Para comprobar la expresión aritmética:
-.\RutaProcessor.exe .\examples\ambiguo.ruta
-
-
-El resultado esperado es que el programa válido sea aceptado y que el programa incorrecto genere un error sintáctico. Estos resultados deben comprobarse ejecutando el proyecto.
-Definición léxica
-Token	Patrón o descripción	Ejemplos
-Palabras reservadas	Palabras definidas por Ruta	robot, forward, turn, stop, repeat, if, then, else, end, return, base
-IDENTIFIER	[A-Za-z_][A-Za-z0-9_]*	Tito, speed, front_sensor
-NUMBER	[0-9]+(\.[0-9]+)?	4, 30, 2.5
-Asignación	=	=
-Operadores aritméticos	+, -, *, /	10 * speed + 5
-Operadores relacionales	``, =, ==, !=	front_sensor < 30
-Delimitadores	DIL0, (, )	DIL1
-NEWLINE	Salto de línea	Separación de instrucciones
-EOF	Fin del archivo	Final de la entrada
-
-Los espacios y tabuladores se ignoran. Los comentarios de línea comienzan con // y se extienden hasta el final de la línea.
-Gramática en EBNF
-programa      = "robot", IDENTIFIER, NEWLINE, listaInstr, EOF ;
-
-listaInstr    = { NEWLINE }, { instruccion, { NEWLINE } } ;
-
-instruccion   = asignacion
-              | avance
-              | giro
-              | "stop"
-              | repetir
-              | condicional
-              | retorno ;
-
-asignacion    = IDENTIFIER, "=", expresion ;
-avance        = "forward", expresion ;
-giro          = "turn", ( "left" | "right" ) ;
-retorno       = "return", "base" ;
-
-repetir       = "repeat", expresion, "{", listaInstr, "}" ;
-
-condicional   = "if", condicion, "then", NEWLINE,
-                listaInstr,
-                [ "else", NEWLINE, listaInstr ],
-                "end" ;
-
-condicion     = expresion,
-                ( "<" | ">" | "<=" | ">=" | "==" | "!=" ),
-                expresion ;
-
-expresion     = termino, { ( "+" | "-" ), termino } ;
-termino       = factor, { ( "*" | "/" ), factor } ;
-factor        = NUMBER
-              | IDENTIFIER
-              | "(", expresion, ")" ;
-
-
-NEWLINE representa un salto de línea. Las llaves delimitan los bloques de repetición y end cierra los condicionales.
-Eliminación de ambigüedades
-Expresiones aritméticas
-La gramática separa las expresiones en tres niveles:
-- expresion: suma y resta.
-- termino: multiplicación y división.
-- factor: números, identificadores y expresiones entre paréntesis.
-De esta forma, la expresión:
-forward 10 * speed + 5
-
-
-se interpreta como:
-(10 * speed) + 5
-
-
-La multiplicación tiene mayor precedencia que la suma.
-Condicionales anidados
-El uso de end permite delimitar los bloques condicionales. Así se evita la ambigüedad conocida como dangling else, en la que un else podría asociarse a más de un if.
-Programas de prueba
-Archivo	Propósito
-examples/correcto.ruta	Comprueba instrucciones válidas, asignaciones, repetición y condicionales.
-examples/incorrecto.ruta	Comprueba la detección de una expresión incompleta, como forward 10 *.
-examples/ambiguo.ruta	Comprueba el reconocimiento de 10 * speed + 5 con precedencia aritmética.
-
-Manejo de errores
-Los errores léxicos y sintácticos deben informar la ubicación del problema y una descripción comprensible.
-
-Ejemplos del formato esperado:
-Error léxico en línea L, columna C: mensaje del error
-Error sintáctico en línea L, columna C: mensaje del error
-
-
-Notas de implementación
-- El lexer identifica los tokens directamente a partir del texto de entrada.
-- El parser utiliza descenso recursivo para comprobar la estructura sintáctica.
-- La precedencia aritmética se implementa mediante las funciones que procesan expresiones, términos y factores.
-- No se utilizan generadores de analizadores léxicos o sintácticos.
-Autor
-Josue Daniel Castaño Montoya
-
-Universidad Autónoma de Manizales — Ingeniería de Sistemas
-Asignatura: Procesadores de Lenguajes
-Periodo: 2026-03
-</WritingBlock>
+**Josue Daniel Castaño Montoya**
+Ingeniería de Sistemas, Universidad Autónoma de Manizales
+GitHub: [@Dajumaks](https://github.com/Dajumaks)
