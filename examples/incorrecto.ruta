@@ -1,0 +1,4 @@
+robot Tito
+speed = 2
+forward 10 *
+return base

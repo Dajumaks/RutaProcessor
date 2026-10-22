@@ -1,0 +1,3 @@
+robot Tito
+speed = 10 * speed + 5
+stop

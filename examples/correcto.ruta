@@ -1,0 +1,16 @@
+robot Tito
+  speed = 2
+
+  repeat 4 {
+    forward 10 * speed + 5
+    turn right
+  }
+
+  if front_sensor < 30 then
+    stop
+  else
+    forward 1
+  end
+
+  // head back to base
+  return base
