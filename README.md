@@ -34,7 +34,7 @@
 
 **RutaProcessor** recibe un archivo con un programa escrito en Ruta, lo transforma en una secuencia de tokens (análisis léxico) y verifica que cumpla la gramática del lenguaje (análisis sintáctico). Si el programa es inválido, informa la **línea**, la **columna** y la **causa** del error en un mensaje pensado para quien escribió el programa.
 
-El lexer y el parser están escritos **a mano**, sin generadores de analizadores ni librerías que hagan el trabajo léxico o sintáctico, de modo que cada parte de la gramática se refleja directamente en el código.
+El lexer y el parser están escritos **a mano**, sin generadores de analizadores ni librerías que hagan el trabajo léxico o sintáctico, de modo que cada parte de la gramática se refleja directamente en el código Añadiendo una presentacion en power point con diferentes puntos a tratar.
 
 ## Características
 
